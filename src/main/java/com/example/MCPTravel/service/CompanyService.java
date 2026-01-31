@@ -60,7 +60,6 @@ public class CompanyService {
                 .website(request.getWebsite())
                 .category(request.getCategory())
                 .workingHours(request.getWorkingHours())
-                .menu(request.getMenu())
                 .specialEvents(request.getSpecialEvents())
                 .status(request.getStatus() != null ? request.getStatus() : CompanyStatus.OPEN)
                 .owner(owner)
@@ -89,7 +88,6 @@ public class CompanyService {
         if (request.getWebsite() != null) company.setWebsite(request.getWebsite());
         if (request.getCategory() != null) company.setCategory(request.getCategory());
         if (request.getWorkingHours() != null) company.setWorkingHours(request.getWorkingHours());
-        if (request.getMenu() != null) company.setMenu(request.getMenu());
         if (request.getSpecialEvents() != null) company.setSpecialEvents(request.getSpecialEvents());
         if (request.getStatus() != null) company.setStatus(request.getStatus());
 
