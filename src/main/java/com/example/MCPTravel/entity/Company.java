@@ -2,7 +2,10 @@ package com.example.MCPTravel.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,11 +50,9 @@ public class Company {
     @Builder.Default
     private Map<String, String> workingHours = new HashMap<>();
 
-    @ElementCollection
-    @CollectionTable(name = "company_menu_items", joinColumns = @JoinColumn(name = "company_id"))
-    @Column(name = "menu_item")
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<String> menu = new ArrayList<>();
+    private List<MenuItem> menuItems = new ArrayList<>();
 
     @Column(name = "special_events", length = 2000)
     private String specialEvents;
@@ -87,5 +88,50 @@ public class Company {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Check if the company is currently open based on working hours.
+     * Working hours format: "HH:mm-HH:mm" (e.g., "09:00-18:00")
+     * Supports overnight hours (e.g., "22:00-02:00")
+     */
+    public boolean isCurrentlyOpen() {
+        if (status == CompanyStatus.CLOSED || status == CompanyStatus.TEMPORARILY_CLOSED) {
+            return false;
+        }
+
+        if (workingHours == null || workingHours.isEmpty()) {
+            return status == CompanyStatus.OPEN;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String dayKey = now.getDayOfWeek().name();
+        String hours = workingHours.get(dayKey);
+
+        if (hours == null || hours.isBlank() || hours.equalsIgnoreCase("closed")) {
+            return false;
+        }
+
+        try {
+            String[] parts = hours.split("-");
+            if (parts.length != 2) {
+                return status == CompanyStatus.OPEN;
+            }
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+            LocalTime openTime = LocalTime.parse(parts[0].trim(), formatter);
+            LocalTime closeTime = LocalTime.parse(parts[1].trim(), formatter);
+            LocalTime currentTime = now.toLocalTime();
+
+            if (closeTime.isAfter(openTime)) {
+                // Normal hours (e.g., 09:00-18:00)
+                return !currentTime.isBefore(openTime) && currentTime.isBefore(closeTime);
+            } else {
+                // Overnight hours (e.g., 22:00-02:00)
+                return !currentTime.isBefore(openTime) || currentTime.isBefore(closeTime);
+            }
+        } catch (Exception e) {
+            return status == CompanyStatus.OPEN;
+        }
     }
 }

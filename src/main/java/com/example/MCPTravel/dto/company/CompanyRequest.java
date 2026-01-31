@@ -4,7 +4,6 @@ import com.example.MCPTravel.entity.CompanyStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
-import java.util.List;
 import java.util.Map;
 
 @Data
@@ -24,8 +23,11 @@ public class CompanyRequest {
     private String website;
     private String category;
 
+    // Working hours format: {"MONDAY": "09:00-18:00", "TUESDAY": "09:00-18:00", ...}
     private Map<String, String> workingHours;
-    private List<String> menu;
+
     private String specialEvents;
     private CompanyStatus status;
+
+    // Note: Menu items are managed separately via /api/companies/{id}/menu endpoints
 }

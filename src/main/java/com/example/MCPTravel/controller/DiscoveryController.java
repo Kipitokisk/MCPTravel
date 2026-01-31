@@ -79,12 +79,24 @@ public class DiscoveryController {
             ),
             Map.of(
                 "name", "get_open_now",
-                "description", "Get businesses that are currently open. Use this when user asks about places open right now.",
+                "description", "Get businesses that are currently open based on their working hours. Use this when user asks about places open right now.",
                 "endpoint", "/api/discovery/open-now",
                 "method", "GET",
                 "parameters", List.of(
                     Map.of("name", "category", "type", "string", "required", false,
                            "description", "Filter by business type")
+                )
+            ),
+            Map.of(
+                "name", "get_company_menu",
+                "description", "Get the menu with prices for a specific company. Use this when user asks about menu items, prices, or what a restaurant serves.",
+                "endpoint", "/api/companies/{companyId}/menu",
+                "method", "GET",
+                "parameters", List.of(
+                    Map.of("name", "companyId", "type", "integer", "required", true,
+                           "description", "The company ID"),
+                    Map.of("name", "availableOnly", "type", "boolean", "required", false,
+                           "description", "If true, returns only available items (default: false)")
                 )
             )
         );
@@ -206,21 +218,29 @@ public class DiscoveryController {
 
     @Operation(
         summary = "Get open businesses",
-        description = "Returns businesses that are currently open. Useful for real-time availability queries."
+        description = "Returns businesses that are currently open based on their working hours. Uses real-time calculation."
     )
-    @ApiResponse(responseCode = "200", description = "List of open businesses")
+    @ApiResponse(responseCode = "200", description = "List of currently open businesses")
     @GetMapping("/open-now")
     public ResponseEntity<Map<String, Object>> getOpenCompanies(
             @Parameter(description = "Filter by business category")
             @RequestParam(required = false) String category
     ) {
-        List<CompanyResponse> companies = companyService.searchCompanies(category, CompanyStatus.OPEN, null);
+        List<CompanyResponse> allCompanies = companyService.getAllCompanies();
+
+        List<CompanyResponse> openCompanies = allCompanies.stream()
+                .filter(c -> Boolean.TRUE.equals(c.getIsCurrentlyOpen()))
+                .filter(c -> category == null || category.equalsIgnoreCase(c.getCategory()))
+                .toList();
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "count", companies.size(),
-                "data", companies,
-                "status_filter", "OPEN"
+                "count", openCompanies.size(),
+                "data", openCompanies,
+                "filter", Map.of(
+                    "category", category != null ? category : "all",
+                    "checked_at", java.time.LocalDateTime.now().toString()
+                )
         ));
     }
 }
