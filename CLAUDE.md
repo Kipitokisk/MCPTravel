@@ -11,19 +11,26 @@ MCP-based platform for business discovery with real-time data. Allows AI agents 
 
 ```
 src/main/java/com/example/MCPTravel/
-├── entity/          # JPA entities (User, Company, Report)
+├── entity/          # JPA entities (User, Company, MenuItem, Report)
 ├── repository/      # Spring Data JPA repositories
 ├── service/         # Business logic
 ├── controller/      # REST controllers
-├── dto/             # Request/Response DTOs
+├── dto/             # Request/Response DTOs (auth, company, menu, report)
 ├── security/        # JWT authentication
 └── config/          # Security, OpenAPI config
 ```
 
 ## Key Entities
 - **User** - Users with roles: USER, BUSINESS_OWNER, ADMIN
-- **Company** - Business locations with menu, hours, status, coordinates
+- **Company** - Business locations with working hours, status, coordinates
+- **MenuItem** - Menu items with name, description, price, category, availability
 - **Report** - User reports against companies (warning system)
+
+## Key Features
+- **Auto-calculate open status**: `Company.isCurrentlyOpen()` checks working hours against current time
+  - Working hours format: `{"MONDAY": "09:00-18:00", "TUESDAY": "09:00-18:00", ...}`
+  - Supports overnight hours (e.g., `"22:00-02:00"`)
+  - Returns false if status is CLOSED or TEMPORARILY_CLOSED
 
 ## API Endpoints
 
@@ -42,6 +49,15 @@ src/main/java/com/example/MCPTravel/
 - `PATCH /api/companies/{id}/status` - Update status
 - `POST /api/reports` - Create report (USER)
 - `PATCH /api/reports/{id}/review` - Review report (ADMIN)
+
+### Menu Management (JWT, owner only)
+- `GET /api/companies/{id}/menu` - Get menu items (`?availableOnly=true` filter)
+- `GET /api/companies/{id}/menu/items/{itemId}` - Get single item
+- `POST /api/companies/{id}/menu` - Add menu item
+- `POST /api/companies/{id}/menu/bulk` - Add multiple items
+- `PUT /api/companies/{id}/menu/items/{itemId}` - Update item
+- `DELETE /api/companies/{id}/menu/items/{itemId}` - Delete item
+- `DELETE /api/companies/{id}/menu` - Clear entire menu
 
 ## Running the Project
 
@@ -89,14 +105,42 @@ curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"owner1","email":"owner@test.com","password":"pass123","role":"BUSINESS_OWNER"}'
 
-# Create company (use token from register response)
+# Create company with working hours (use token from register response)
 curl -X POST http://localhost:8080/api/companies \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
-  -d '{"name":"Cafe Central","address":"Main St 1","category":"cafe","latitude":47.01,"longitude":28.86}'
+  -d '{
+    "name":"Cafe Central",
+    "address":"Main St 1",
+    "category":"cafe",
+    "latitude":47.01,
+    "longitude":28.86,
+    "workingHours":{"MONDAY":"09:00-18:00","TUESDAY":"09:00-18:00"}
+  }'
+
+# Add menu item to company
+curl -X POST http://localhost:8080/api/companies/1/menu \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"name":"Espresso","description":"Strong coffee","price":25.00,"category":"drinks"}'
+
+# Bulk add menu items
+curl -X POST http://localhost:8080/api/companies/1/menu/bulk \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '[
+    {"name":"Latte","price":35.00,"category":"drinks"},
+    {"name":"Croissant","price":20.00,"category":"pastry"}
+  ]'
+
+# Check what's open now
+curl http://localhost:8080/api/discovery/open-now
 ```
 
 ## Future Work
 - Integrate local AI agent with /api/discovery/tools
 - Add frontend application
 - Implement geospatial queries with PostGIS
+- Add image upload for menu items and company photos
+- Add user favorites/bookmarks
+- Add company reviews/ratings
