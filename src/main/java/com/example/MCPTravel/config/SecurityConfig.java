@@ -1,6 +1,7 @@
 package com.example.MCPTravel.config;
 
 import com.example.MCPTravel.security.JwtAuthenticationFilter;
+import com.example.MCPTravel.security.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -35,6 +37,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/companies/**").permitAll()
                 .requestMatchers("/api/discovery/**").permitAll()
                 // Swagger UI
@@ -47,6 +50,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/companies/**").hasAnyRole("BUSINESS_OWNER", "ADMIN")
                 // Authenticated users
                 .anyRequest().authenticated()
+            )
+            .oauth2Login(oauth2 -> oauth2
+                .successHandler(oAuth2SuccessHandler)
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

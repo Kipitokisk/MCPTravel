@@ -1,0 +1,5 @@
+# Secrets - Claude cannot read these
+.env
+*.pem
+*.key
+credentials.json

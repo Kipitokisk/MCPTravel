@@ -32,6 +32,12 @@ src/main/java/com/example/MCPTravel/
   - Supports overnight hours (e.g., `"22:00-02:00"`)
   - Returns false if status is CLOSED or TEMPORARILY_CLOSED
 
+- **Google OAuth 2.0**: Login with Google account
+  - Get credentials from https://console.cloud.google.com
+  - Set env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+  - Login URL: `/oauth2/authorization/google`
+  - Returns JWT token via redirect
+
 ## API Endpoints
 
 ### Public (No Auth)
