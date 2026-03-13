@@ -137,8 +137,33 @@ curl -X POST http://localhost:8080/api/companies/1/menu/bulk \
 curl http://localhost:8080/api/discovery/open-now
 ```
 
+## AI Agent
+
+Local AI agent using Ollama (free, no API keys needed).
+
+```bash
+# Setup
+cd ai-agent
+pip install -r requirements.txt
+
+# Install Ollama from https://ollama.ai
+ollama pull llama3.1
+
+# Run (backend must be running)
+python agent_ollama.py
+```
+
+The agent fetches tools dynamically from `/api/discovery/tools` (MCP integration).
+
 ## Future Work
-- Integrate local AI agent with /api/discovery/tools
+
+### AI Agent
+- Web UI with Streamlit/Flask
+- Save conversation history
+- Better response formatting
+- Logging/debug mode
+
+### Backend
 - Add frontend application
 - Implement geospatial queries with PostGIS
 - Add image upload for menu items and company photos
