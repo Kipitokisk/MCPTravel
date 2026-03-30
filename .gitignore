@@ -33,3 +33,6 @@ build/
 .vscode/
 ai-agent/.env
 .env
+
+CLAUDE.md
+.claudeignore
