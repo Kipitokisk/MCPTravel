@@ -8,13 +8,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
@@ -47,14 +45,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         }
 
         // Generate JWT token
-        org.springframework.security.core.userdetails.User userDetails =
-                new org.springframework.security.core.userdetails.User(
-                        user.getUsername(),
-                        "",
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-                );
-
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(user.getUsername(), "ROLE_" + user.getRole().name());
 
         // Redirect with token
         String targetUrl = redirectUri + "?token=" + token;

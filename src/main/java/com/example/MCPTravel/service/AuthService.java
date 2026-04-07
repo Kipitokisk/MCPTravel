@@ -9,11 +9,8 @@ import com.example.MCPTravel.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.Collections;
 
 @Service
 @RequiredArgsConstructor
@@ -41,13 +38,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        var userDetails = new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-        );
-
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(user.getUsername(), "ROLE_" + user.getRole().name());
 
         return AuthResponse.builder()
                 .token(token)
@@ -68,13 +59,7 @@ public class AuthService {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        var userDetails = new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-        );
-
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(user.getUsername(), "ROLE_" + user.getRole().name());
 
         return AuthResponse.builder()
                 .token(token)

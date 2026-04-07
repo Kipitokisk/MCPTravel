@@ -130,7 +130,8 @@ public class CompanyService {
     }
 
     public List<CompanyResponse> findNearbyCompanies(Double latitude, Double longitude, Double radiusKm) {
-        return companyRepository.findNearbyCompanies(latitude, longitude, radiusKm).stream()
+        Double radiusMeters = radiusKm * 1000;
+        return companyRepository.findNearbyCompanies(latitude, longitude, radiusMeters).stream()
                 .map(CompanyResponse::fromEntity)
                 .collect(Collectors.toList());
     }

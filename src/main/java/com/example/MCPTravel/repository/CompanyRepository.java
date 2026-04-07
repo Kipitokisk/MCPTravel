@@ -31,19 +31,27 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
         @Param("name") String name
     );
 
-    @Query(value = "SELECT *, " +
-           "(6371 * acos(cos(radians(:lat)) * cos(radians(latitude)) * " +
-           "cos(radians(longitude) - radians(:lng)) + sin(radians(:lat)) * " +
-           "sin(radians(latitude)))) AS distance " +
-           "FROM companies " +
-           "WHERE latitude IS NOT NULL AND longitude IS NOT NULL " +
-           "HAVING distance < :radius " +
-           "ORDER BY distance",
+    @Query(value = "SELECT * FROM companies " +
+           "WHERE location IS NOT NULL " +
+           "AND ST_DWithin(location::geography, ST_MakePoint(:lng, :lat)::geography, :radiusMeters) " +
+           "ORDER BY ST_Distance(location::geography, ST_MakePoint(:lng, :lat)::geography)",
            nativeQuery = true)
     List<Company> findNearbyCompanies(
         @Param("lat") Double latitude,
         @Param("lng") Double longitude,
-        @Param("radius") Double radiusKm
+        @Param("radiusMeters") Double radiusMeters
+    );
+
+    @Query(value = "SELECT *, ST_Distance(location::geography, ST_MakePoint(:lng, :lat)::geography) as distance " +
+           "FROM companies " +
+           "WHERE location IS NOT NULL " +
+           "AND ST_DWithin(location::geography, ST_MakePoint(:lng, :lat)::geography, :radiusMeters) " +
+           "ORDER BY distance",
+           nativeQuery = true)
+    List<Object[]> findNearbyCompaniesWithDistance(
+        @Param("lat") Double latitude,
+        @Param("lng") Double longitude,
+        @Param("radiusMeters") Double radiusMeters
     );
 
     @Query("SELECT c FROM Company c WHERE c.warningCount >= :count")

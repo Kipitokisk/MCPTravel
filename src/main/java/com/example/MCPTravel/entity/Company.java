@@ -2,7 +2,11 @@ package com.example.MCPTravel.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.DayOfWeek;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
+
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -35,6 +39,9 @@ public class Company {
     private Double latitude;
 
     private Double longitude;
+
+    @Column(columnDefinition = "geometry(Point,4326)")
+    private Point location;
 
     @Column(name = "phone_number")
     private String phoneNumber;
@@ -79,15 +86,25 @@ public class Company {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        updateLocation();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        updateLocation();
+    }
+
+    private void updateLocation() {
+        if (latitude != null && longitude != null) {
+            this.location = geometryFactory.createPoint(new Coordinate(longitude, latitude));
+        }
     }
 
     /**
