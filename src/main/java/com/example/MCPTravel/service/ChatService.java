@@ -5,10 +5,8 @@ import com.example.MCPTravel.dto.chat.ChatResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -27,9 +25,6 @@ public class ChatService {
 
     @Value("${anthropic.model:claude-haiku-4-5-20251001}")
     private String model;
-
-    @Value("${anthropic.api.url:https://api.anthropic.com/v1/messages}")
-    private String apiUrl;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private WebClient webClient;
@@ -374,7 +369,6 @@ public class ChatService {
             }
 
             String endpoint = (String) toolDef.get("endpoint");
-            String method = (String) toolDef.get("method");
 
             // Replace path parameters
             Map<String, Object> queryParams = new HashMap<>();
