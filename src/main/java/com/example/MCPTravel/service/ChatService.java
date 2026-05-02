@@ -1,20 +1,29 @@
 package com.example.MCPTravel.service;
 
+import com.example.MCPTravel.dto.chat.ChatHistoryResponse;
 import com.example.MCPTravel.dto.chat.ChatRequest;
 import com.example.MCPTravel.dto.chat.ChatResponse;
+import com.example.MCPTravel.entity.ChatMessage;
+import com.example.MCPTravel.entity.User;
+import com.example.MCPTravel.repository.ChatMessageRepository;
+import com.example.MCPTravel.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -26,8 +35,15 @@ public class ChatService {
     @Value("${anthropic.model:claude-haiku-4-5-20251001}")
     private String model;
 
+    private final ChatMessageRepository chatMessageRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private WebClient webClient;
+
+    public ChatService(ChatMessageRepository chatMessageRepository, UserRepository userRepository) {
+        this.chatMessageRepository = chatMessageRepository;
+        this.userRepository = userRepository;
+    }
 
     // Store conversation history per session
     private final Map<String, List<Map<String, Object>>> conversationHistory = new ConcurrentHashMap<>();
@@ -178,6 +194,9 @@ public class ChatService {
 
         try {
             String response = processChat(request.getMessage(), history, context);
+
+            // Persist messages if user is authenticated
+            persistIfAuthenticated(sessionId, request.getMessage(), response);
 
             return ChatResponse.builder()
                     .response(response)
@@ -454,5 +473,81 @@ public class ChatService {
     public void clearSession(String sessionId) {
         conversationHistory.remove(sessionId);
         sessionContext.remove(sessionId);
+    }
+
+    private void persistIfAuthenticated(String sessionId, String userMessage, String assistantResponse) {
+        try {
+            User user = getAuthenticatedUser();
+            if (user == null) {
+                return;
+            }
+
+            ChatMessage userMsg = ChatMessage.builder()
+                    .user(user)
+                    .sessionId(sessionId)
+                    .role("user")
+                    .content(userMessage)
+                    .build();
+
+            ChatMessage assistantMsg = ChatMessage.builder()
+                    .user(user)
+                    .sessionId(sessionId)
+                    .role("assistant")
+                    .content(assistantResponse)
+                    .build();
+
+            chatMessageRepository.saveAll(List.of(userMsg, assistantMsg));
+        } catch (Exception e) {
+            log.warn("Failed to persist chat messages: {}", e.getMessage());
+        }
+    }
+
+    private User getAuthenticatedUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
+
+    public List<Map<String, Object>> getChatSessions() {
+        User user = getAuthenticatedUser();
+        if (user == null) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        List<ChatMessage> latestMessages = chatMessageRepository.findLatestMessagePerSession(user);
+        return latestMessages.stream()
+                .map(msg -> {
+                    Map<String, Object> session = new HashMap<>();
+                    session.put("sessionId", msg.getSessionId());
+                    session.put("lastMessage", msg.getContent());
+                    session.put("lastMessageAt", msg.getCreatedAt());
+                    return session;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<ChatHistoryResponse> getSessionHistory(String sessionId) {
+        User user = getAuthenticatedUser();
+        if (user == null) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        return chatMessageRepository.findByUserAndSessionIdOrderByCreatedAtAsc(user, sessionId)
+                .stream()
+                .map(ChatHistoryResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteSessionHistory(String sessionId) {
+        User user = getAuthenticatedUser();
+        if (user == null) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        chatMessageRepository.deleteByUserAndSessionId(user, sessionId);
     }
 }
