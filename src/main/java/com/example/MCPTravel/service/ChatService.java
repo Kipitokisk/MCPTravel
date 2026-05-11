@@ -198,11 +198,20 @@ public class ChatService {
             // Persist messages if user is authenticated
             persistIfAuthenticated(sessionId, request.getMessage(), response);
 
-            return ChatResponse.builder()
+            ChatResponse.ChatResponseBuilder responseBuilder = ChatResponse.builder()
                     .response(response)
                     .sessionId(sessionId)
-                    .success(true)
-                    .build();
+                    .success(true);
+
+            // Attach current location context if available
+            if (context.containsKey("last_company_lat") && context.containsKey("last_company_lng")) {
+                responseBuilder
+                        .locationName((String) context.get("last_company_name"))
+                        .locationLatitude(((Number) context.get("last_company_lat")).doubleValue())
+                        .locationLongitude(((Number) context.get("last_company_lng")).doubleValue());
+            }
+
+            return responseBuilder.build();
 
         } catch (Exception e) {
             log.error("Chat error: {}", e.getMessage(), e);
@@ -449,10 +458,7 @@ public class ChatService {
                 List<Map<String, Object>> data = (List<Map<String, Object>>) result.get("data");
                 if (!data.isEmpty()) {
                     Map<String, Object> first = data.get(0);
-                    if (first.containsKey("id")) {
-                        context.put("last_company_id", first.get("id"));
-                        context.put("last_company_name", first.get("name"));
-                    }
+                    updateLocationContext(first, context);
 
                     // Limit results to avoid token overflow
                     if (data.size() > 10) {
@@ -460,6 +466,9 @@ public class ChatService {
                         result.put("truncated", true);
                     }
                 }
+            } else if (result.containsKey("data") && result.get("data") instanceof Map) {
+                Map<String, Object> data = (Map<String, Object>) result.get("data");
+                updateLocationContext(data, context);
             }
 
             return result;
@@ -467,6 +476,18 @@ public class ChatService {
         } catch (Exception e) {
             log.error("Tool execution error: {}", e.getMessage());
             return Map.of("error", e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void updateLocationContext(Map<String, Object> company, Map<String, Object> context) {
+        if (company.containsKey("id")) {
+            context.put("last_company_id", company.get("id"));
+            context.put("last_company_name", company.get("name"));
+            if (company.containsKey("latitude") && company.containsKey("longitude")) {
+                context.put("last_company_lat", company.get("latitude"));
+                context.put("last_company_lng", company.get("longitude"));
+            }
         }
     }
 
